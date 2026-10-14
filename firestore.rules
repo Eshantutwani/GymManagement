@@ -1,0 +1,77 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ---------- helpers ----------
+    function signedIn() { return request.auth != null; }
+    // The admin claim is set only by scripts/set-admin.js (Admin SDK). Clients cannot set it.
+    function isAdmin()  { return signedIn() && request.auth.token.admin == true; }
+    function isSelf(uid) { return signedIn() && request.auth.uid == uid; }
+
+    function validPlan(d) {
+      return d.planName is string && d.planName.size() > 0
+        && d.durationInDays is int && d.durationInDays > 0
+        && d.price is number && d.price >= 0
+        && d.isActive is bool;
+    }
+    function validPayment(d) {
+      return d.memberId is string
+        && d.amount is number && d.amount > 0
+        && d.paymentMethod in ['cash', 'upi', 'card', 'bank_transfer']
+        && d.status in ['paid', 'pending', 'failed'];
+    }
+
+    // ---------- users ----------
+    match /users/{uid} {
+      allow read: if isAdmin() || isSelf(uid);
+      // Self-registration can only ever create a plain "member" profile.
+      allow create: if isSelf(uid)
+        && request.resource.data.uid == uid
+        && request.resource.data.role == 'member'
+        && request.resource.data.createdAt == request.time;
+      allow update, delete: if isAdmin();
+    }
+
+    // ---------- members ----------
+    match /members/{memberId} {
+      // A self-registered member's document ID equals their auth UID.
+      allow read: if isAdmin() || isSelf(memberId);
+      allow create: if isAdmin()
+        || (isSelf(memberId)
+            && request.resource.data.memberId == memberId
+            && request.resource.data.uid == request.auth.uid
+            && request.resource.data.membershipId == null
+            && request.resource.data.status == 'pending');
+      allow update, delete: if isAdmin();
+    }
+
+    // ---------- membership plans (public price list) ----------
+    match /membershipPlans/{planId} {
+      allow read: if true;
+      allow create, update: if isAdmin() && validPlan(request.resource.data);
+      allow delete: if isAdmin();
+    }
+
+    // ---------- payments ----------
+    match /payments/{paymentId} {
+      allow read: if isAdmin() || (signedIn() && resource.data.memberId == request.auth.uid);
+      allow create, update: if isAdmin() && validPayment(request.resource.data);
+      allow delete: if isAdmin();
+    }
+
+    // ---------- attendance ----------
+    match /attendance/{attendanceId} {
+      allow read: if isAdmin() || (signedIn() && resource.data.memberId == request.auth.uid);
+      // Document ID is memberId_YYYY-MM-DD, so a second create for the same day is an update and is rejected below.
+      allow create: if isAdmin()
+        && request.resource.data.attendanceId == attendanceId
+        && request.resource.data.checkInTime == request.time;
+      allow update, delete: if isAdmin();
+    }
+
+    // ---------- trainers ----------
+    match /trainers/{trainerId} {
+      allow read, write: if isAdmin();
+    }
+  }
+}
