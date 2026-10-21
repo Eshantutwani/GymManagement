@@ -1,6 +1,7 @@
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { AuthProvider, useAuth } from "./firebase/auth";
 import { ToastProvider, Loading } from "./components/ui";
+import DatabaseActivity from "./components/DatabaseActivity";
 import Layout from "./components/Layout";
 import Landing from "./pages/Landing";
 import { Login, Register } from "./pages/Auth";
@@ -28,6 +29,7 @@ export default function App() {
     <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <ToastProvider>
         <AuthProvider>
+          <DatabaseActivity />
           <Routes>
             <Route path="/" element={<Landing />} />
             <Route path="/login" element={<Login />} />

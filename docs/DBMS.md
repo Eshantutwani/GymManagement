@@ -122,7 +122,10 @@ await deleteDoc(doc(db, "members", id));
 
 Firestore is a NoSQL document database. It does not enforce foreign keys; this project keeps references valid through the service layer and rules.
 
-## 12. Limitations and future improvements
+## 12. Frontend database activity
+The **DB activity** control, available on every page including login and registration, shows the Firebase Authentication and Firestore requests made during the current app session as SDK-style source text, along with request status and duration. Query text includes actual Firestore collection/document paths and filter values. Written document fields are shown with values redacted to avoid exposing personal data, and authentication credentials are always redacted. Batched writes and transactions appear as one atomic operation; real-time member subscriptions appear as live listeners. This is an in-app activity view, not a server-side audit log or a display of Firestore's internal SQL (Firestore does not execute SQL).
+
+## 13. Limitations and future improvements
 - No automatic foreign-key checks, so orphaned references are possible if data is edited outside the app.
 - Dashboard totals load collections on the client. At larger scale, move them to aggregation queries or Cloud Functions that maintain summary documents.
 - Member deletion removes Firestore data only; the Firebase Auth account needs Admin SDK or a Cloud Function to delete.
